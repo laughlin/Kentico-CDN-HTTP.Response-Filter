@@ -2,6 +2,8 @@
 using System.Configuration;
 using System.Linq;
 using System.Text.RegularExpressions;
+using CMS.EventLog;
+using CMS.SiteProvider;
 using HtmlAgilityPack;
 
 /// <summary>
@@ -41,36 +43,55 @@ public class CdnParser
     }
     public string ReplaceHtml(string html)
     {
-        var document = new HtmlDocument();
-        document.LoadHtml(html);
-        if(!string.IsNullOrEmpty(CdnXPathHtmlToReplace))
-        { 
-            var collection = document.DocumentNode.SelectNodes(CdnXPathHtmlToReplace);
-            foreach (var element in collection)
+        if (!string.IsNullOrEmpty(html))
+        {
+            try
             {
-                switch (element.Name)
+                var document = new HtmlDocument();
+                document.LoadHtml(html);
+                if (!string.IsNullOrEmpty(CdnXPathHtmlToReplace))
                 {
-                    case "script":
-                        HandleAttribute(element, "src");
-                        break;
-                    case "img":
-                        HandleAttribute(element, "src");
-                        HandleDataAttributes(element);
-                        break;
-                    case "link":
-                        HandleAttribute(element, "href");
-                        break;
-                    case "meta":
-                        HandleAttribute(element, "content");
-                        break;
-                    default:
-                        HandleDataAttributes(element);
-                        break;
+                    if (document.DocumentNode != null)
+                    {
+                        var collection = document.DocumentNode.SelectNodes(CdnXPathHtmlToReplace);
+                        if (collection.Any())
+                        {
+                            foreach (var element in collection)
+                            {
+                                switch (element.Name)
+                                {
+                                    case "script":
+                                        HandleAttribute(element, "src");
+                                        break;
+                                    case "img":
+                                        HandleAttribute(element, "src");
+                                        HandleDataAttributes(element);
+                                        break;
+                                    case "link":
+                                        HandleAttribute(element, "href");
+                                        break;
+                                    case "meta":
+                                        HandleAttribute(element, "content");
+                                        break;
+                                    default:
+                                        HandleDataAttributes(element);
+                                        break;
+                                }
+                                HandleStyleAttribute(element);
+                            }
+                        }
+                        return document.DocumentNode.OuterHtml;
+                    }
                 }
-                HandleStyleAttribute(element);
+                return html;
+            }
+            catch (Exception ex)
+            {
+                EventLogProvider.LogException("CdnParser.cs", "ReplaceHtml", ex, SiteContext.CurrentSiteID, "HTML: " + html);
+                return html;
             }
         }
-        return document.DocumentNode.OuterHtml;
+        return string.Empty;
     }
 
     private void HandleAttribute(HtmlNode node, string attribute)

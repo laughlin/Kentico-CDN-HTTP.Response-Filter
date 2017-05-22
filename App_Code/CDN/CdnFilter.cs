@@ -110,13 +110,16 @@ public class CdnFilter : Stream
         if (_isClosing && !_isClosed)
         {
             var encoding = HttpContext.Current.Response.ContentEncoding;
-            var cachedContent = encoding.GetString(_cachedStream.ToArray());
-            // Filter the cached content
-            cachedContent = _cdnParser.ReplaceHtml(cachedContent);
-            var buffer = encoding.GetBytes(cachedContent);
-            // Write new content to stream
-            _responseStream.Write(buffer, 0, buffer.Length);
-            _cachedStream.SetLength(0);
+            if (_cachedStream != null)
+            {
+                var cachedContent = encoding.GetString(_cachedStream.ToArray());
+                // Filter the cached content
+                cachedContent = _cdnParser.ReplaceHtml(cachedContent);
+                var buffer = encoding.GetBytes(cachedContent);
+                // Write new content to stream
+                _responseStream.Write(buffer, 0, buffer.Length);
+                _cachedStream.SetLength(0);
+            }
             _responseStream.Flush();
         }
     }
