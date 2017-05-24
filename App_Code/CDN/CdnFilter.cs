@@ -68,7 +68,7 @@ public class CdnFilter : Stream
 
     public override long Position { get; set; }
 
-    public CdnFilter(Stream inputStream, Uri currentUrl)
+    public CdnFilter(Stream inputStream, HttpRequest currentRequest)
     {
         _responseStream = inputStream;
         var smallDomainName = string.IsNullOrWhiteSpace(CdnSmallDomain) ? string.Empty : CdnSmallDomain;
@@ -96,7 +96,7 @@ public class CdnFilter : Stream
         if (!string.IsNullOrWhiteSpace(ForceSsl) && bool.TryParse(ForceSsl, out forceSsl))
             _useSsl = forceSsl;
         // Loads the request headers as a collection
-        var headers = HttpContext.Current.Request.Headers;
+        var headers = currentRequest.Headers;
         // Gets the value from the X-Forwarded-Ssl header
         var forwardedSsl = headers.Get("X-Forwarded-Ssl");
         var protoSsl = headers.Get("X-Forwarded-Proto");
@@ -111,11 +111,11 @@ public class CdnFilter : Stream
             _excludeFilePaths = FilePathsToIgnore.Split(chArray);
             foreach (var str in _excludeFilePaths)
             {
-                if (HttpContext.Current.Request.RawUrl.Contains(str))
+                if (currentRequest.RawUrl.Contains(str))
                     _doCdnRewrite = false;
             }
         }
-        _cdnParser = new CdnParser(_useSsl, smallDomainName, largeDomainName, _smallFileExtensions, _largeFileExtensions, _doFilePathMatching, _matchFilePaths, _excludeFilePaths, currentUrl);
+        _cdnParser = new CdnParser(_useSsl, smallDomainName, largeDomainName, _smallFileExtensions, _largeFileExtensions, _doFilePathMatching, _matchFilePaths, _excludeFilePaths, currentRequest.Url);
     }
 
     public override void Flush()

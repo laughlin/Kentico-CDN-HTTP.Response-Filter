@@ -42,6 +42,6 @@ public class CdnModule : IHttpModule
             if (disallowedUrls.Any(disallowedUrl => rawUrl.Contains(disallowedUrl)))
                 return;
         }
-        response.Filter = new CdnFilter(HttpContext.Current.Response.Filter, HttpContext.Current.Request.Url);
+        response.Filter = new CdnFilter(HttpContext.Current.Response.Filter, HttpContext.Current.Request);
     }
 }
