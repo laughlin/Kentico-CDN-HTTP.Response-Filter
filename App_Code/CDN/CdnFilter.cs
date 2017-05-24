@@ -3,6 +3,9 @@ using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Web;
+using CMS.EventLog;
+using CMS.SiteProvider;
+using CMS.Helpers;
 
 /// <summary>
 /// Taken from https://devnet.kentico.com/marketplace/utilities/kentico-cdn-injector
@@ -92,8 +95,18 @@ public class CdnFilter : Stream
         bool forceSsl;
         if (!string.IsNullOrWhiteSpace(ForceSsl) && bool.TryParse(ForceSsl, out forceSsl))
             _useSsl = forceSsl;
+        // Loads the request headers as a collection
+        var headers = HttpContext.Current.Request.Headers;
+        // Gets the value from the X-Forwarded-Ssl header
+        var forwardedSsl = headers.Get("X-Forwarded-Ssl");
+        var protoSsl = headers.Get("X-Forwarded-Proto");
+        // Checks if the original request used HTTPS
+        if ((!string.IsNullOrEmpty(forwardedSsl) && forwardedSsl == "On") || (!string.IsNullOrEmpty(protoSsl) && protoSsl == "https"))
+        {
+            _useSsl = true;
+        }
         if (!string.IsNullOrWhiteSpace(FilePathsToIgnore))
-         { 
+        {
             var chArray = new[] { ',' };
             _excludeFilePaths = FilePathsToIgnore.Split(chArray);
             foreach (var str in _excludeFilePaths)
