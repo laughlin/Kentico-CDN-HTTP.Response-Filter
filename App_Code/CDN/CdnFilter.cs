@@ -1,11 +1,7 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Web;
-using CMS.EventLog;
-using CMS.SiteProvider;
-using CMS.Helpers;
 
 /// <summary>
 /// Taken from https://devnet.kentico.com/marketplace/utilities/kentico-cdn-injector
