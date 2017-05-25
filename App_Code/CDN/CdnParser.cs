@@ -39,7 +39,6 @@ public class CdnParser
         _currentUrl = currentUrl;
         _enableSmallCdn = !string.IsNullOrEmpty(smallDomainName);
         _enableLargeCdn = !string.IsNullOrEmpty(largeDomainName);
-
     }
 
     public string ReplaceHtml(string html)

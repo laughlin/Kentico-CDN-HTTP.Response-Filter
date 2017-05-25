@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Web;
+using CMS.Helpers;
 
 /// <summary>
 /// Taken from https://devnet.kentico.com/marketplace/utilities/kentico-cdn-injector
@@ -98,7 +99,7 @@ public class CdnFilter : Stream
         var forwardedSsl = headers.Get("X-Forwarded-Ssl");
         var protoSsl = headers.Get("X-Forwarded-Proto");
         // Checks if the original request used HTTPS
-        if ((!string.IsNullOrEmpty(forwardedSsl) && forwardedSsl == "On") || (!string.IsNullOrEmpty(protoSsl) && protoSsl == "https"))
+        if ((!string.IsNullOrEmpty(forwardedSsl) && forwardedSsl == "On") || (!string.IsNullOrEmpty(protoSsl) && protoSsl == "https") || RequestContext.IsSSL)
         {
             _useSsl = true;
         }
