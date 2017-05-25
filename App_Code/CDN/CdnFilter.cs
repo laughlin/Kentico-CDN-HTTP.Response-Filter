@@ -10,16 +10,17 @@ using System.Web;
 /// </summary>
 public class CdnFilter : Stream
 {
-    public string CdnSmallDomain = ConfigurationManager.AppSettings["CdnSmallDomain"];
-    public string CdnLargeDomain = ConfigurationManager.AppSettings["CdnLargeDomain"];
-    public string ForceSsl = ConfigurationManager.AppSettings["CdnForceSsl"];
-    public string SmallFileExtensionsToMatch = ConfigurationManager.AppSettings["CdnSmallFileExtensionsToMatch"];
-    public string LargeFileExtensionsToMatch = ConfigurationManager.AppSettings["CdnLargeFileExtensionsToMatch"];
-    public string FilePathsToMatch = ConfigurationManager.AppSettings["CdnFilePathsToMatch"];
-    public string FilePathsToIgnore = ConfigurationManager.AppSettings["CdnFilePathsToIgnore"];
+    public readonly CdnParser CdnParser;
+    public bool ForceClose;
+    private readonly string _cdnSmallDomain = ConfigurationManager.AppSettings["CdnSmallDomain"];
+    private readonly string _cdnLargeDomain = ConfigurationManager.AppSettings["CdnLargeDomain"];
+    private readonly string _forceSsl = ConfigurationManager.AppSettings["CdnForceSsl"];
+    private readonly string _smallFileExtensionsToMatch = ConfigurationManager.AppSettings["CdnSmallFileExtensionsToMatch"];
+    private readonly string _largeFileExtensionsToMatch = ConfigurationManager.AppSettings["CdnLargeFileExtensionsToMatch"];
+    private readonly string _filePathsToMatch = ConfigurationManager.AppSettings["CdnFilePathsToMatch"];
+    private readonly string _filePathsToIgnore = ConfigurationManager.AppSettings["CdnFilePathsToIgnore"];
     private readonly MemoryStream _cachedStream = new MemoryStream(1024);
     private readonly Stream _responseStream;
-    private readonly CdnParser _cdnParser;
     private readonly bool _useSsl;
     private readonly bool _doCdnRewrite;
     private readonly string[] _smallFileExtensions;
@@ -67,29 +68,29 @@ public class CdnFilter : Stream
     public CdnFilter(Stream inputStream, HttpRequest currentRequest)
     {
         _responseStream = inputStream;
-        var smallDomainName = string.IsNullOrWhiteSpace(CdnSmallDomain) ? string.Empty : CdnSmallDomain;
-        var largeDomainName = string.IsNullOrWhiteSpace(CdnLargeDomain) ? string.Empty : CdnLargeDomain;
+        var smallDomainName = string.IsNullOrWhiteSpace(_cdnSmallDomain) ? string.Empty : _cdnSmallDomain;
+        var largeDomainName = string.IsNullOrWhiteSpace(_cdnLargeDomain) ? string.Empty : _cdnLargeDomain;
         if (!string.IsNullOrEmpty(smallDomainName) || !string.IsNullOrEmpty(largeDomainName))
             _doCdnRewrite = true;
-        if (!string.IsNullOrWhiteSpace(FilePathsToMatch))
+        if (!string.IsNullOrWhiteSpace(_filePathsToMatch))
         {
-            _matchFilePaths = FilePathsToMatch.Split(',');
+            _matchFilePaths = _filePathsToMatch.Split(',');
             _doFilePathMatching = _matchFilePaths.Length > 0;
         }
         else
             _doCdnRewrite = false;
-        if (!string.IsNullOrWhiteSpace(SmallFileExtensionsToMatch))
+        if (!string.IsNullOrWhiteSpace(_smallFileExtensionsToMatch))
         {
-            _smallFileExtensions = SmallFileExtensionsToMatch.Split(',');
+            _smallFileExtensions = _smallFileExtensionsToMatch.Split(',');
         }
-        if (!string.IsNullOrWhiteSpace(LargeFileExtensionsToMatch))
+        if (!string.IsNullOrWhiteSpace(_largeFileExtensionsToMatch))
         {
-            _largeFileExtensions = LargeFileExtensionsToMatch.Split(',');
+            _largeFileExtensions = _largeFileExtensionsToMatch.Split(',');
         }
         if (!_smallFileExtensions.Any() && !_largeFileExtensions.Any())
             _doCdnRewrite = false;
         bool forceSsl;
-        if (!string.IsNullOrWhiteSpace(ForceSsl) && bool.TryParse(ForceSsl, out forceSsl))
+        if (!string.IsNullOrWhiteSpace(_forceSsl) && bool.TryParse(_forceSsl, out forceSsl))
             _useSsl = forceSsl;
         // Loads the request headers as a collection
         var headers = currentRequest.Headers;
@@ -101,17 +102,17 @@ public class CdnFilter : Stream
         {
             _useSsl = true;
         }
-        if (!string.IsNullOrWhiteSpace(FilePathsToIgnore))
+        if (!string.IsNullOrWhiteSpace(_filePathsToIgnore))
         {
             var chArray = new[] { ',' };
-            _excludeFilePaths = FilePathsToIgnore.Split(chArray);
+            _excludeFilePaths = _filePathsToIgnore.Split(chArray);
             foreach (var str in _excludeFilePaths)
             {
                 if (currentRequest.RawUrl.Contains(str))
                     _doCdnRewrite = false;
             }
         }
-        _cdnParser = new CdnParser(_useSsl, smallDomainName, largeDomainName, _smallFileExtensions, _largeFileExtensions, _doFilePathMatching, _matchFilePaths, _excludeFilePaths, currentRequest.Url);
+        CdnParser = new CdnParser(_useSsl, smallDomainName, largeDomainName, _smallFileExtensions, _largeFileExtensions, _doFilePathMatching, _matchFilePaths, _excludeFilePaths, currentRequest.Url);
     }
 
     public override void Flush()
@@ -123,11 +124,11 @@ public class CdnFilter : Stream
             {
                 var cachedContent = encoding.GetString(_cachedStream.ToArray());
                 // Filter the cached content
-                cachedContent = _cdnParser.ReplaceHtml(cachedContent);
+                cachedContent = CdnParser.ReplaceHtml(cachedContent);
                 var buffer = encoding.GetBytes(cachedContent);
                 // Write new content to stream
                 _responseStream.Write(buffer, 0, buffer.Length);
-                _cachedStream.SetLength(0);
+                _cachedStream.Flush();
             }
             _responseStream.Flush();
         }
@@ -135,10 +136,16 @@ public class CdnFilter : Stream
 
     public override void Close()
     {
-        _isClosing = true;
-        Flush();
-        _isClosed = true;
-        _isClosing = false;
+        if (!ForceClose)
+        {
+            _isClosing = true;
+            Flush();
+            _isClosed = true;
+            _isClosing = false;
+        }
+        else
+            _responseStream.Flush();
+        _cachedStream.Close();
         _responseStream.Close();
     }
 

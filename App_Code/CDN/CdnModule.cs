@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Configuration;
-using System.Linq;
 using System.Web;
-using Kentico.Google.Apis.Util;
 
 /// <summary>
 /// Taken from https://devnet.kentico.com/marketplace/utilities/kentico-cdn-injector
@@ -17,31 +14,16 @@ public class CdnModule : IHttpModule
 
     void IHttpModule.Init(HttpApplication context)
     {
-        var enableCdn = ConfigurationManager.AppSettings["CdnEnabled"];
-        if (!enableCdn.IsNullOrEmpty())
-        {
-            bool enable;
-            if (bool.TryParse(enableCdn, out enable))
-            {
-                if(enable)
-                    context.ReleaseRequestState += ReleaseRequestState;
-            }
-        }
+        if (CdnHelper.IsCdnEnabled())
+            context.ReleaseRequestState += ReleaseRequestState;
     }
 
     static void ReleaseRequestState(object sender, EventArgs e)
     {
         var response = HttpContext.Current.Response;
         var rawUrl = HttpContext.Current.Request.RawUrl.ToLower();
-        if (response.ContentType != "text/html" || rawUrl.Contains("/cms"))
+        if (!CdnHelper.IsCdnAllowed(response, rawUrl))
             return;
-        var cdnDisallowedUrls = ConfigurationManager.AppSettings["CdnDisallowedUrls"];
-        if (!cdnDisallowedUrls.IsNullOrEmpty())
-        {
-            var disallowedUrls = cdnDisallowedUrls.Split(',');
-            if (disallowedUrls.Any(disallowedUrl => rawUrl.Contains(disallowedUrl)))
-                return;
-        }
         response.Filter = new CdnFilter(HttpContext.Current.Response.Filter, HttpContext.Current.Request);
     }
 }

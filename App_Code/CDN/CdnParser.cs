@@ -13,7 +13,7 @@ using HtmlAgilityPack;
 /// </summary>
 public class CdnParser
 {
-    public string CdnXPathHtmlToReplace = ConfigurationManager.AppSettings["CdnXPathHtmlToReplace"];
+    private readonly string _cdnXPathHtmlToReplace = ConfigurationManager.AppSettings["CdnXPathHtmlToReplace"];
     private readonly bool _useSsl;
     private readonly string _smallDomainName;
     private readonly string _largeDomainName;
@@ -41,6 +41,7 @@ public class CdnParser
         _enableLargeCdn = !string.IsNullOrEmpty(largeDomainName);
 
     }
+
     public string ReplaceHtml(string html)
     {
         if (!string.IsNullOrEmpty(html))
@@ -49,11 +50,11 @@ public class CdnParser
             {
                 var document = new HtmlDocument();
                 document.LoadHtml(html);
-                if (!string.IsNullOrEmpty(CdnXPathHtmlToReplace))
+                if (!string.IsNullOrEmpty(_cdnXPathHtmlToReplace))
                 {
                     if (document.DocumentNode != null)
                     {
-                        var collection = document.DocumentNode.SelectNodes(CdnXPathHtmlToReplace);
+                        var collection = document.DocumentNode.SelectNodes(_cdnXPathHtmlToReplace);
                         if (collection.Any())
                         {
                             foreach (var element in collection)
@@ -94,49 +95,7 @@ public class CdnParser
         return string.Empty;
     }
 
-    private void HandleAttribute(HtmlNode node, string attribute)
-    {
-        var src = node.GetAttributeValue(attribute, string.Empty);
-        if (!string.IsNullOrEmpty(src))
-            node.Attributes[attribute].Value = GetUrl(src);
-    }
-
-    private void HandleDataAttributes(HtmlNode node)
-    {
-        if (node.HasAttributes && node.Attributes.Count(x => x.Name.ToLower().Contains("data-")) > 0)
-        {
-            var dataAttributes = node.Attributes.Where(x => x.Name.ToLower().Contains("data-"));
-            foreach (var dataAttribute in dataAttributes)
-            {
-                if (!string.IsNullOrEmpty(dataAttribute.Value))
-                    node.Attributes[dataAttribute.Name].Value = GetUrl(dataAttribute.Value);
-            }
-        }
-    }
-
-    private void HandleStyleAttribute(HtmlNode node)
-    {
-        if (node.HasAttributes && node.Attributes.Count(x => x.Name.ToLower().Equals("style")) > 0)
-        {
-            var styleAttribute = node.Attributes.Single(x => x.Name.ToLower().Equals("style"));
-            if (!string.IsNullOrEmpty(styleAttribute.Value))
-            {
-                var regex = new Regex(@"background(-image)?:.*?url\('\s*(?<url>.*?)\s*'\)");
-                if (regex.IsMatch(styleAttribute.Value))
-                {
-                    var match = regex.Match(styleAttribute.Value);
-                    if (match.Groups.Count == 3)
-                    {
-                        var url = match.Groups[2].Value;
-                        node.Attributes[styleAttribute.Name].Value = styleAttribute.Value.Replace(url, GetUrl(url));
-                    }
-                }
-            }
-
-        }
-    }
-
-    private string GetUrl(string path)
+    public string GetUrl(string path)
     {
         if (!_doFilePathMatching)
             return path;
@@ -200,5 +159,47 @@ public class CdnParser
             urlRewrite = scheme + _smallDomainName + trailingSlash + path;
         else urlRewrite = scheme + _largeDomainName + trailingSlash + path;
         return urlRewrite;
+    }
+
+    private void HandleAttribute(HtmlNode node, string attribute)
+    {
+        var src = node.GetAttributeValue(attribute, string.Empty);
+        if (!string.IsNullOrEmpty(src))
+            node.Attributes[attribute].Value = GetUrl(src);
+    }
+
+    private void HandleDataAttributes(HtmlNode node)
+    {
+        if (node.HasAttributes && node.Attributes.Count(x => x.Name.ToLower().Contains("data-")) > 0)
+        {
+            var dataAttributes = node.Attributes.Where(x => x.Name.ToLower().Contains("data-"));
+            foreach (var dataAttribute in dataAttributes)
+            {
+                if (!string.IsNullOrEmpty(dataAttribute.Value))
+                    node.Attributes[dataAttribute.Name].Value = GetUrl(dataAttribute.Value);
+            }
+        }
+    }
+
+    private void HandleStyleAttribute(HtmlNode node)
+    {
+        if (node.HasAttributes && node.Attributes.Count(x => x.Name.ToLower().Equals("style")) > 0)
+        {
+            var styleAttribute = node.Attributes.Single(x => x.Name.ToLower().Equals("style"));
+            if (!string.IsNullOrEmpty(styleAttribute.Value))
+            {
+                var regex = new Regex(@"background(-image)?:.*?url\('\s*(?<url>.*?)\s*'\)");
+                if (regex.IsMatch(styleAttribute.Value))
+                {
+                    var match = regex.Match(styleAttribute.Value);
+                    if (match.Groups.Count == 3)
+                    {
+                        var url = match.Groups[2].Value;
+                        node.Attributes[styleAttribute.Name].Value = styleAttribute.Value.Replace(url, GetUrl(url));
+                    }
+                }
+            }
+
+        }
     }
 }
