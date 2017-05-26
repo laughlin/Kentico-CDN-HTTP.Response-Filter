@@ -23,6 +23,8 @@ This change does not synchronize your files with your CDN, it merely alters the 
 
 This filter does not require any changes to your IIS server.
 
+An optional Custom Tranformation Method [CdnPrefix()] is also included if you would like to be able to access the CDN logic within the Ketnico Admin.
+
 
 
 *****************************************
@@ -44,6 +46,10 @@ You can install a couple of ways:
 					HtmlAgilityPack.dll
 					HtmlAgilityPack.pdb
 					HtmlAgilityPack.xml
+					
+To install the optional Custom Tranformation Method [CdnPrefix()] copy the App_Code/CustomTransformationMethods/ folder to your CMS/App_Code/ directory (merging if necessary).
+Here is an example of how it can be used within a Transformation:
+{'teaserUrl':'<%# Eval("BlogPostTeaser").ToString() != "" ? CdnPrefix(ResolveUrl("~/CMSPages/GetFile.aspx?guid=" + Eval("BlogPostTeaser").ToString())) : "" %>'}
 
 
 
