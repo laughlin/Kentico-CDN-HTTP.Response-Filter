@@ -110,7 +110,11 @@ public class CdnFilter : Stream
             foreach (var str in _excludeFilePaths)
             {
                 if (currentRequest.RawUrl.Contains(str))
+                {
                     _doCdnRewrite = false;
+                    break;
+                }
+                    
             }
         }
         CdnParser = new CdnParser(_useSsl, smallDomainName, largeDomainName, _smallFileExtensions, _largeFileExtensions, _doFilePathMatching, _matchFilePaths, _excludeFilePaths, currentRequest.Url);

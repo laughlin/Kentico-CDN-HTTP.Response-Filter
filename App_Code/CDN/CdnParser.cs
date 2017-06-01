@@ -107,7 +107,11 @@ public class CdnParser
         foreach (var filePath in _matchFilePaths)
         {
             if (path.ToLower().Contains(filePath.ToLower()))
+            {
                 continueFlag = true;
+                break;
+            }
+               
         }
         if (!continueFlag)
             return path;
@@ -120,6 +124,7 @@ public class CdnParser
             {
                 continueFlag = true;
                 useSmallCdn = _enableSmallCdn;
+                break;
             }
         }
         if (!useSmallCdn)
@@ -130,6 +135,7 @@ public class CdnParser
                 {
                     continueFlag = true;
                     useLargeCdn = _enableLargeCdn;
+                    break;
                 }
             }
             if (!continueFlag || !useLargeCdn)
@@ -140,7 +146,7 @@ public class CdnParser
             var uri = new Uri(path);
             if (uri.Host.Equals(_currentUrl.Host)) //request is fully qualified, still use CDN
             {
-                path = uri.AbsolutePath;
+                path = uri.PathAndQuery;
             }
             else
             {
